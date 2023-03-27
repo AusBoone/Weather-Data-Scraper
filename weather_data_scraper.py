@@ -1,3 +1,4 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -17,9 +18,14 @@ def scrape_weather_data(city, start_date, end_date):
     Returns:
         A pandas DataFrame containing the weather data for the specified date range.
     """
-    # Convert date strings to datetime objects
-    start_date = datetime.strptime(start_date, '%Y-%m-%d')
-    end_date = datetime.strptime(end_date, '%Y-%m-%d')
+    # Validate input data
+    try:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+    except ValueError as e:
+        raise ValueError('Invalid date format. Use the format YYYY-MM-DD.') from e
+    if start_date > end_date:
+        raise ValueError('Start date must be earlier than end date.')
 
     # Create empty lists to store data
     dates = []
@@ -31,6 +37,8 @@ def scrape_weather_data(city, start_date, end_date):
         # Construct the URL for the current date and city
         url = f'https://weather.com/weather/history/d/{current_date.strftime("%Y%m%d")}/hourly/l/{city}'
         response = requests.get(url)
+        if response.status_code != 200:
+            raise Exception(f'Error retrieving data. HTTP status code: {response.status_code}')
         soup = BeautifulSoup(response.content, 'html.parser')
 
         # Extract the temperature data from the page
@@ -50,7 +58,7 @@ def scrape_weather_data(city, start_date, end_date):
 
     return weather_data
 
-
+       
 def save_weather_data(weather_data, filename):
     """
     Save the weather data to a CSV file.
@@ -72,6 +80,8 @@ def load_weather_data(filename):
     Returns:
         A pandas DataFrame containing the weather data.
     """
+    if not os.path.isfile(filename):
+        raise FileNotFoundError(f'File {filename} not found.')
     weather_data = pd.read_csv(filename)
     return weather_data
 
